@@ -1,0 +1,127 @@
+
+--QUERY # 1:
+--Country selling the most in music industry
+SELECT c.Country, count(InvoiceId)
+FROM Customer c JOIN Invoice i
+    on c.CustomerId = i .CustomerId
+GROUP BY 1
+ORDER BY 2 DESC
+
+--What genre sells the most world wide?
+
+WITH
+    world_wide
+    AS
+    (
+        SELECT
+            g.name genre,
+            il.quantity quantity, il.UnitPrice
+        FROM
+            track tr
+            INNER JOIN InvoiceLine il ON il.TrackId = tr.TrackId
+            INNER JOIN invoice i ON i.InvoiceId= il.InvoiceId
+            INNER JOIN customer c ON c.CustomerId = i.CustomerId
+            INNER JOIN genre g ON g.GenreId = tr.GenreId
+    
+    )
+SELECT
+    ww.genre,
+    SUM(ww.quantity) total_purchased,
+    (CAST(SUM(ww.quantity) as float)/
+    CAST((SELECT SUM(quantity)
+    FROM world_wide) as float))*100 pct_purchased
+FROM world_wide ww
+GROUP BY genre
+ORDER BY 2 DESC
+LIMIT 10
+
+
+--genre selling most in US with percentile?
+WITH
+    only_us
+    AS
+    (
+        SELECT
+            g.name genre,
+            il.quantity quantity, il.UnitPrice
+        FROM
+            track tr
+            INNER JOIN InvoiceLine il ON il.TrackId = tr.TrackId
+            INNER JOIN invoice i ON i.InvoiceId= il.InvoiceId
+            INNER JOIN customer c ON c.CustomerId = i.CustomerId
+            INNER JOIN genre g ON g.GenreId = tr.GenreId
+        WHERE c.country = "USA"
+    )
+SELECT
+    ou.genre,
+    SUM(ou.quantity) total_purchased,
+    (CAST(SUM(ou.quantity) as float)/
+    CAST((SELECT SUM(quantity)
+    FROM only_us) as float))*100 pct_purchased
+FROM only_us ou
+GROUP BY genre
+ORDER BY 2 DESC
+LIMIT 10
+
+-- Query # 2
+--Top Sales_Person
+
+SELECT e.FirstName || ' ' || e.LastName AS Sales_Person,strftime('%Y-%m-%d', e.HireDate) AS Hired_at,SUM(i.total) AS Total_Sales
+FROM employee e JOIN Customer c
+ON c.SupportRepId = e.EmployeeId JOIN 
+Invoice i on c.CustomerId = i.CustomerId
+WHERE e.Title = "Sales Support Agent"
+GROUP BY 1,2
+ORDER BY 3 DESC
+
+--Query # 3
+
+--Top 10 popular artists according to their number of songs and total earnings according to  tracks
+SELECT ar.Name, count
+(t.Name) Songs, (t.UnitPrice*count(*)) AS totalEarnings
+FROM Customer c join Invoice i
+    on c.CustomerId = i.CustomerId JOIN
+    InvoiceLine il ON i.InvoiceId =il.InvoiceId
+    JOIN Track t
+    ON il.TrackId = t.TrackId
+    JOIN Album a
+    ON a.AlbumId = t.AlbumId
+    JOIN Artist ar ON
+ar.ArtistId = a.ArtistId JOIN
+    genre g ON g.GenreId = t.GenreId
+GROUP BY 1
+ORDER BY 2 DESC
+LIMIT 10
+
+--QUERY #4 
+--query to show top five albums in year 2012 and 2013
+SELECT ar.Name Artist, a.Title AlbumTitle, SUM(il.Quantity*il.UnitPrice) Sales
+FROM Artist ar
+    JOIN Album a
+    ON ar.ArtistID = a.ArtistId
+    JOIN Track t
+    ON a.AlbumiD = t.AlbumId
+    JOIN InvoiceLine il
+    ON t.TrackId = il.TrackId
+    JOIN Invoice i
+    ON il.InvoiceId = i.InvoiceId 
+WHERE STRFTIME('%Y' ,i.InvoiceDate )= '2012'
+GROUP BY AlbumTitle
+ORDER BY Sales DESC
+LIMIT 5
+
+SELECT ar.Name Artist, a.Title AlbumTitle, SUM(il.Quantity*il.UnitPrice) Sales
+FROM Artist ar
+    JOIN Album a
+    ON ar.ArtistID = a.ArtistId
+    JOIN Track t
+    ON a.AlbumiD = t.AlbumId
+    JOIN InvoiceLine il
+    ON t.TrackId = il.TrackId
+    JOIN Invoice i
+    ON il.InvoiceId = i.InvoiceId 
+WHERE STRFTIME('%Y' ,i.InvoiceDate )= '2013'
+GROUP BY AlbumTitle
+ORDER BY Sales DESC
+LIMIT 5
+
